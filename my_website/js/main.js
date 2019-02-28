@@ -32,34 +32,55 @@ function onEachFeature(feature, layer) {
     };
 };
 
-//function to retrieve the data and place it on the map
+//Step 3: Add circle markers for point features to the map
+function createPropSymbols(data, map){
+    var attribute = "yr1995"
+    //create marker options
+    var geojsonMarkerOptions = {
+        radius: 8,
+        fillColor: "#ff7800", 
+        color: "#000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+    };
+
+    //calculate the radius of each proportional symbol
+function calcPropRadius(attValue) {
+    //scale factor to adjust symbol size evenly
+    var scaleFactor = 50;
+    //area based on attribute value and scale factor
+    var area = attValue * scaleFactor;
+    //radius calculated based on area
+    var radius = Math.sqrt(area/Math.PI);
+    console.log(radius)
+    console.log("calcProp")
+    return radius;
+};
+    //create a Leaflet GeoJSON layer and add it to the map
+    L.geoJson(data, {
+        pointToLayer: function (feature, latlng) {
+            //Step 5: For each feature, determine its value for the selected attribute
+            var attValue = Number(feature.properties[attribute]);
+
+            //Step 6: Give each feature's circle marker a radius based on its attribute value
+            geojsonMarkerOptions.radius = calcPropRadius(attValue);
+            console.log(geojsonMarkerOptions.radius)
+
+            //create circle markers
+            return L.circleMarker(latlng, geojsonMarkerOptions);
+        }
+    }).addTo(map);
+};
+
+//Step 2: Import GeoJSON data
 function getData(map){
     //load the data
     $.ajax("data/countries.geojson", {
         dataType: "json",
         success: function(response){
-            var geojsonMarkerOptions = {
-                radius: 8,
-                fillColor: "#ff7800",
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-            };
-            //create a Leaflet GeoJSON layer and add it to the map
-            L.geoJson(response, {
-                onEachFeature: onEachFeature,
-                pointToLayer: function (feature, latlng){
-                    return L.circleMarker(latlng, geojsonMarkerOptions);
-                },
-                filter: function(feature, layer) {
-                    if (feature.properties.yr2014 > 5) {
-                        return 'true'
-                    }
-                }
-
-            }).addTo(map);
-            
+            //call function to create proportional symbols
+            createPropSymbols(response, map);
         }
     });
 };
