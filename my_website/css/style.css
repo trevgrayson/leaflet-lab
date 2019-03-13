@@ -1,15 +1,28 @@
 #map { 
-    height: 800px; 
-    width: 70%;
+    height: 600px; 
+    width: 80%; 
     display: inline-block;
 }
+
 #panel {
-    width: 26%;
+    width: 16%;
     padding: 20px;
     display: inline-block;
     vertical-align: top;
     text-align: center;
-    line-height: 42px;
+    line-height: 18px;
+    background-color: azure
+    
+}
+
+.legend-control-container {
+    width: 140px;
+    height: 100px;
+    background-color: azure;
+    padding: 10px;
+    line-height: 30px;
+    text-align: center;
+    border: solid gray 2px;
 }
 
 .range-slider {
@@ -23,6 +36,7 @@
 #reverse {
     float: left;
 }
+
 .leaflet-popup-content p {
     margin: 0.2em 0;
 }

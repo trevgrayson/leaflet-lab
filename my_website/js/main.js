@@ -1,7 +1,3 @@
-
-
-/* Map of GeoJSON data from MegaCities.geojson */
-
 //function to instantiate the Leaflet map
 function createMap(){
     //create the map
@@ -9,7 +5,6 @@ function createMap(){
         center: [20, 0],
         zoom: 2
     });
-
     //add OSM base tilelayer
     L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -35,22 +30,18 @@ function pointToLayer(feature, latlng, attributes){
 
     //For each feature, determine its value for the selected attribute
     var attValue = Number(feature.properties[attribute]);
-
     //Give each feature's circle marker a radius based on its attribute value
     options.radius = calcPropRadius(attValue);
-
     //create circle marker layer
     var layer = L.circleMarker(latlng, options);
-
     //build popup content string
     var popupContent = "<p><b>Country:</b> " + feature.properties.Country + "</p>";
     var year = attribute.split("yr")[1];
-    popupContent += "<p><b>Emmisions per capita in " + year + ":</b> " + feature.properties[attribute] + " tonnes   </p>";
+    popupContent += "<p><b>Emmisions per capita in " + year + ":</b> " + feature.properties[attribute] + " metric tonnes   </p>";
     //bind the popup to the circle marker
     layer.bindPopup(popupContent, {
         offset: new L.Point(0,-options.radius)
     });
-
     //event listeners to open popup on hover
     layer.on({
         mouseover: function(){
@@ -59,11 +50,7 @@ function pointToLayer(feature, latlng, attributes){
         mouseout: function(){
             this.closePopup();
         },
-        // click: function(){
-        //     $("#panel").html(popupContent);
-        // }
     })
-
     //return the circle marker to the L.geoJson pointToLayer option
     return layer;
 };
@@ -75,13 +62,6 @@ function createPropSymbols(data, map, attributes){
         pointToLayer: function(feature, latlng){
             return pointToLayer(feature, latlng, attributes);
         },
-        // filter: filterSet(map, attributes, index)
-        //  function(feature, layer) {
-        //     // filterValue = emissionRange()
-        //     if (feature.properties.yr1995 > filterValue ) {
-        //         return 'true'
-        //     }
-        // }
     }).addTo(map);
 };
 
@@ -95,28 +75,6 @@ function calcPropRadius(attValue) {
     var radius = Math.sqrt(area/Math.PI);
     return radius;
 };
-
-// //trying to create a function that returns a filter statement to the L.geojson
-// function filterSet(map, attributes, index){
-//     var filter = 1
-//     var indexVal = // this will be a multistep value probaby to split to filter by high, medium, and low per capita emissions
-//     filterText = "function(feature, layer, attr, indexVal) {if (feature.properties[attr] > indexVal) { return true}}"
-//     return filterText
-// };
-
-//Reference text from example. Trying to piece this with my method together
-// $('.menu-ui a').on('click', function() {
-//     // For each filter link, get the 'data-filter' attribute value.
-//     var filter = $(this).data('filter');
-//     $(this).addClass('active').siblings().removeClass('active');
-//     markers.setFilter(function(f) {
-//         // If the data-filter attribute is set to "all", return
-//         // all (true). Otherwise, filter on markers that have
-//         // a value set to true based on the filter name.
-//         return (filter === 'all') ? true : f.properties[filter] === true;
-//     });
-//     return false;
-// });
 
 //Create new sequence controls
 function createSequenceControls(map, attributes){
@@ -135,19 +93,19 @@ function createSequenceControls(map, attributes){
         step: 1
     });
 
-    //Step 5: click listener for buttons
+    //click listener for buttons
     $('.skip').click(function(){
         //get the old index value
         var index = $('.range-slider').val();
 
-        //Step 6: increment or decrement depending on button clicked
+        //increment or decrement depending on button clicked
         if ($(this).attr('id') == 'forward'){
             index++;
-            //Step 7: if past the last attribute, wrap around to first attribute
+            //if past the last attribute, wrap around to first attribute
             index = index > 6 ? 0 : index;
         } else if ($(this).attr('id') == 'reverse'){
             index--;
-            //Step 7: if past the first attribute, wrap around to last attribute
+            //if past the first attribute, wrap around to last attribute
             index = index < 0 ? 6 : index;
         };
 
@@ -156,7 +114,8 @@ function createSequenceControls(map, attributes){
         
         //input listener for slider
         $('.range-slider').on('input', function(){
-            //FINISH MANUAL SLIDER 
+            var index = $(this).val(); 
+		    updatePropSymbols(map, attributes[index]);
         });
         //pass new attribute to update symbols
         updatePropSymbols(map, attributes[index]);
@@ -164,7 +123,7 @@ function createSequenceControls(map, attributes){
     
 };
 
-//Step 10: Resize proportional symbols according to new attribute values
+//Resize proportional symbols according to new attribute values
 function updatePropSymbols(map, attribute){
     map.eachLayer(function(layer){
         if (layer.feature && layer.feature.properties[attribute]){
@@ -187,28 +146,136 @@ function updatePropSymbols(map, attribute){
             layer.bindPopup(popupContent, {
                 offset: new L.Point(0,-radius)
             });
+            updateLegend(map, attribute);
+
         };
     });
+};
+
+//Create map legend	
+function createLegend(map, attributes){
+    var LegendControl = L.Control.extend({
+        options: {
+            position: 'bottomleft'
+        },
+
+        onAdd: function (map) {
+            // create the control container with a particular class name
+            var container = L.DomUtil.create('div', 'legend-control-container');
+
+            //add temporal legend div to container
+            $(container).append('<div id="temporal-legend">')
+
+            //start attribute legend svg string
+            var svg = '<svg id="attribute-legend" width="160px" height="80px">';
+			
+			//object to base loop on
+			var circles = {
+				max: 20,
+				mean: 40,
+				min: 60
+			};
+
+			//loop to add each circle and text to svg string
+			for (var circle in circles){
+				//circle string
+				svg += '<circle class="legend-circle" id="' + circle + '" fill="#ff4300" fill-opacity="0.8" stroke="#000000" cx="30"/>';
+
+				//text string
+				svg += '<text id="' + circle + '-text" x="65" y="' + circles[circle] + '"></text>';
+			};
+			//close svg string
+			svg += "</svg>";
+            //add attribute legend svg to container
+            $(container).append(svg);
+
+            return container;
+        }
+    });
+    map.addControl(new LegendControl());	
+	updateLegend(map, attributes[0]);
+};
+
+//Calculate the max, mean, and min values
+function getCircleValues(map, attribute){
+    //start with min at highest possible and max at lowest possible number
+    var min = Infinity,
+        max = -Infinity;
+
+    map.eachLayer(function(layer){
+        //get the attribute value
+        if (layer.feature){
+            var attributeValue = Number(layer.feature.properties[attribute]);
+
+            //set min
+            if (attributeValue < min){
+                min = attributeValue;
+            };
+
+            //set max
+            if (attributeValue > max){
+                max = attributeValue;
+            };
+        };
+    });
+    //set mean
+    var mean = (max + min) / 2;
+
+    //return values circle values
+    return {
+        max: Math.round(max),
+        mean: Math.round(mean),
+        min: Math.round(min)
+    };
+};
+
+//Update the legend with new attribute
+function updateLegend(map, attribute){
+	//create content for legend
+	var year = attribute.split("yr")[1];
+	var content = "Emissions in " + year;
+
+	//replace legend content
+	$('#temporal-legend').html(content);
+	
+	//get the max, mean, and min values
+    var circleValues = getCircleValues(map, attribute);
+	
+	for (var key in circleValues){
+        //get the radius
+        var radius = calcPropRadius(circleValues[key]);
+
+        $('#'+key).attr({
+            cy: 59 - radius,
+            r: radius
+        });
+        //add legend text
+        $('#'+key+'-text').text(Math.round(circleValues[key]*100)/100 + " Tonnes");
+    };
 };
 
 function processData(data){
     //empty array to hold attributes
     var attributes = [];
-
     //properties of the first feature in the dataset
     var properties = data.features[0].properties;
-
+    var max = -Infinity;
+    var min = Infinity;
     //push each attribute name into attributes array
     for (var attribute in properties){
         //only take attributes with population values
         if (attribute.indexOf("yr") > -1){
             attributes.push(attribute);
+            if (properties[attribute] > max) {
+                max = properties[attribute];
+            };
+            if (properties[attribute] < min) {
+                min = properties[attribute];
+            };
         };
     };
 
-    //check result
-    console.log(attributes);
-
+    attributes.push(max,min);
     return attributes;
 };
 
@@ -220,9 +287,10 @@ function getData(map){
         success: function(response){
             var attributes = processData(response);
 
+            //create map elements
             createPropSymbols(response, map, attributes);
             createSequenceControls(map, attributes);
-            // emissionRange(map, attributes)
+            createLegend(map,attributes)
         }
     });
 };
